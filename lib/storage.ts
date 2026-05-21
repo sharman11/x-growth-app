@@ -31,7 +31,15 @@ export interface Settings {
   dailyPosts: number;
 }
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// IST = UTC+5:30. Shift "now" by +5:30, then take the YYYY-MM-DD in UTC —
+// the result is today's date as seen in India, so the day rolls over at IST midnight.
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+export const istTodayStr = (): string =>
+  new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+const todayStr = istTodayStr;
+
+const istYesterdayStr = (): string =>
+  new Date(Date.now() + IST_OFFSET_MS - 86400000).toISOString().slice(0, 10);
 
 const isBrowser = () => typeof window !== 'undefined';
 
@@ -48,7 +56,7 @@ export const storage = {
     const today = todayStr();
     if (s.lastDate === today) return s;
 
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const yesterday = istYesterdayStr();
     const newCurrent = s.lastDate === yesterday ? s.current + 1 : 1;
     const next: StreakData = {
       current: newCurrent,
@@ -143,8 +151,8 @@ export const storage = {
     const cur = map[today] ?? [];
     const next = cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key];
 
-    // Prune entries older than 7 days
-    const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    // Prune entries older than 7 days (cutoff in IST)
+    const cutoff = new Date(Date.now() + IST_OFFSET_MS - 7 * 86400000).toISOString().slice(0, 10);
     const pruned: Record<string, string[]> = { [today]: next };
     for (const [d, keys] of Object.entries(map)) {
       if (d >= cutoff && d !== today && keys.length > 0) pruned[d] = keys;

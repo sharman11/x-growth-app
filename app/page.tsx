@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Nav from '@/components/Nav';
 import { POST_IDEAS, type PostIdea } from '@/lib/ideas';
-import { storage, seededShuffle, type StreakData, type Settings } from '@/lib/storage';
+import { storage, seededShuffle, istTodayStr, type StreakData, type Settings } from '@/lib/storage';
 
 const CATEGORY_LABELS: Record<string, string> = {
   'build-log': 'Build Log',
@@ -23,6 +23,8 @@ export default function HomePage() {
   const [reshuffleCount, setReshuffleCount] = useState(0);
   const [donePosts, setDonePosts] = useState<string[]>([]);
 
+  const [dayKey, setDayKey] = useState(() => istTodayStr());
+
   useEffect(() => {
     setMounted(true);
     setStreak(storage.getStreak());
@@ -30,12 +32,33 @@ export default function HomePage() {
     setDonePosts(storage.getDonePostsForToday());
   }, []);
 
+  // Reset the page state at IST midnight: prompts re-seed (via dayKey in useMemo),
+  // donePosts clear, and the "Mark today done" button becomes available again.
+  useEffect(() => {
+    const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+    const scheduleNext = () => {
+      const nowIst = Date.now() + IST_OFFSET_MS;
+      const msUntilMidnight = 86400000 - (nowIst % 86400000);
+      return window.setTimeout(() => {
+        setDayKey(istTodayStr());
+        setDonePosts(storage.getDonePostsForToday());
+        setStreak(storage.getStreak());
+        setReshuffleCount(0);
+        timer = scheduleNext();
+      }, msUntilMidnight + 1000);
+    };
+    let timer = scheduleNext();
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const dailyIdeas = useMemo(() => {
     if (!settings) return [];
     const seed = storage.getDailySeed() + reshuffleCount * 7;
     const shuffled = seededShuffle(POST_IDEAS, seed);
     return shuffled.slice(0, settings.dailyPosts);
-  }, [settings, reshuffleCount]);
+    // dayKey is a dependency so the seed re-evaluates at IST midnight
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings, reshuffleCount, dayKey]);
 
   const handleMarkDone = () => {
     const next = storage.markToday();
@@ -120,9 +143,9 @@ export default function HomePage() {
             <button
               onClick={handleMarkDone}
               className="btn w-full mt-3"
-              disabled={streak.lastDate === new Date().toISOString().slice(0, 10)}
+              disabled={streak.lastDate === istTodayStr()}
             >
-              {streak.lastDate === new Date().toISOString().slice(0, 10) ? 'Logged for today ✓' : 'Mark today done'}
+              {streak.lastDate === istTodayStr() ? 'Logged for today ✓' : 'Mark today done'}
             </button>
           </div>
         </div>
@@ -138,7 +161,7 @@ export default function HomePage() {
                   <h2 className="serif text-2xl">Today's prompts</h2>
                   <p className="mono text-[10px] uppercase tracking-widest text-muted mt-1">
                     Posted {postedVisible} of {dailyIdeas.length}
-                    {allPosted && streak?.lastDate !== new Date().toISOString().slice(0, 10) && (
+                    {allPosted && streak?.lastDate !== istTodayStr() && (
                       <span className="text-accent ml-2">· all done — mark today done ↑</span>
                     )}
                   </p>
