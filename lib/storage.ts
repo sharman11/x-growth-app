@@ -7,6 +7,8 @@ const KEYS = {
   settings: 'xge:settings',
   threadLog: 'xge:threads',
   donePosts: 'xge:donePosts',
+  replyTargets: 'xge:replyTargets',
+  replyLog: 'xge:replyLog',
 };
 
 export interface StreakData {
@@ -29,6 +31,15 @@ export interface Settings {
   currentFollowers: number;
   goalDate: string;
   dailyPosts: number;
+  dailyReplies: number;
+}
+
+export interface ReplyTarget {
+  id: string;
+  handle: string; // e.g. @shaanvp
+  niche: string;
+  why: string; // why this account matters
+  addedAt: number;
 }
 
 // IST = UTC+5:30. Shift "now" by +5:30, then take the YYYY-MM-DD in UTC —
@@ -160,6 +171,76 @@ export const storage = {
     localStorage.setItem(KEYS.donePosts, JSON.stringify(pruned));
     return next;
   },
+
+  // Reply targets — accounts in your niche you should be replying to.
+  getReplyTargets(): ReplyTarget[] {
+    if (!isBrowser()) return [];
+    const raw = localStorage.getItem(KEYS.replyTargets);
+    if (!raw) return [];
+    try { return JSON.parse(raw); } catch { return []; }
+  },
+
+  addReplyTarget(handle: string, niche: string, why: string): ReplyTarget {
+    const clean = handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`;
+    const list = storage.getReplyTargets();
+    if (list.find(t => t.handle.toLowerCase() === clean.toLowerCase())) {
+      return list.find(t => t.handle.toLowerCase() === clean.toLowerCase())!;
+    }
+    const next: ReplyTarget = {
+      id: Math.random().toString(36).slice(2),
+      handle: clean,
+      niche: niche.trim(),
+      why: why.trim(),
+      addedAt: Date.now(),
+    };
+    localStorage.setItem(KEYS.replyTargets, JSON.stringify([next, ...list]));
+    return next;
+  },
+
+  removeReplyTarget(id: string) {
+    const list = storage.getReplyTargets().filter(t => t.id !== id);
+    localStorage.setItem(KEYS.replyTargets, JSON.stringify(list));
+  },
+
+  // Per-day reply log. { 'YYYY-MM-DD': [handle1, handle2, ...] }
+  getReplyLogMap(): Record<string, string[]> {
+    if (!isBrowser()) return {};
+    const raw = localStorage.getItem(KEYS.replyLog);
+    if (!raw) return {};
+    try { return JSON.parse(raw); } catch { return {}; }
+  },
+
+  getRepliesToday(): string[] {
+    return storage.getReplyLogMap()[todayStr()] ?? [];
+  },
+
+  logReplyToTarget(handle: string) {
+    const map = storage.getReplyLogMap();
+    const today = todayStr();
+    const cur = map[today] ?? [];
+    if (!cur.includes(handle)) {
+      map[today] = [...cur, handle];
+    }
+    // Prune older than 30 days
+    const cutoff = new Date(Date.now() + IST_OFFSET_MS - 30 * 86400000).toISOString().slice(0, 10);
+    const pruned: Record<string, string[]> = {};
+    for (const [d, handles] of Object.entries(map)) {
+      if (d >= cutoff) pruned[d] = handles;
+    }
+    localStorage.setItem(KEYS.replyLog, JSON.stringify(pruned));
+  },
+
+  // Last reply date per handle, derived from the log
+  lastReplyByHandle(): Record<string, string> {
+    const map = storage.getReplyLogMap();
+    const out: Record<string, string> = {};
+    for (const [date, handles] of Object.entries(map)) {
+      for (const h of handles) {
+        if (!out[h] || out[h] < date) out[h] = date;
+      }
+    }
+    return out;
+  },
 };
 
 function defaultSettings(): Settings {
@@ -169,6 +250,7 @@ function defaultSettings(): Settings {
     currentFollowers: 89,
     goalDate: endOfYear,
     dailyPosts: 4,
+    dailyReplies: 10,
   };
 }
 
