@@ -21,11 +21,13 @@ export default function HomePage() {
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [reshuffleCount, setReshuffleCount] = useState(0);
+  const [donePosts, setDonePosts] = useState<string[]>([]);
 
   useEffect(() => {
     setMounted(true);
     setStreak(storage.getStreak());
     setSettings(storage.getSettings());
+    setDonePosts(storage.getDonePostsForToday());
   }, []);
 
   const dailyIdeas = useMemo(() => {
@@ -46,6 +48,11 @@ export default function HomePage() {
       category: idea.category,
     });
     alert('Idea saved.');
+  };
+
+  const handleTogglePosted = (idea: PostIdea) => {
+    const next = storage.togglePostDone(idea.angle);
+    setDonePosts(next);
   };
 
   if (!mounted || !settings || !streak) {
@@ -121,21 +128,44 @@ export default function HomePage() {
         </div>
 
         {/* Idea cards */}
-        <div className="hairline-b pb-3 mb-6 flex items-baseline justify-between">
-          <h2 className="serif text-2xl">Today's prompts</h2>
-          <button
-            onClick={() => setReshuffleCount(c => c + 1)}
-            className="mono text-xs uppercase tracking-widest text-muted hover:text-ink transition-colors"
-          >
-            Reshuffle ↻
-          </button>
-        </div>
+        {(() => {
+          const postedVisible = dailyIdeas.filter(i => donePosts.includes(i.angle)).length;
+          const allPosted = postedVisible === dailyIdeas.length && dailyIdeas.length > 0;
+          return (
+            <>
+              <div className="hairline-b pb-3 mb-6 flex items-baseline justify-between">
+                <div>
+                  <h2 className="serif text-2xl">Today's prompts</h2>
+                  <p className="mono text-[10px] uppercase tracking-widest text-muted mt-1">
+                    Posted {postedVisible} of {dailyIdeas.length}
+                    {allPosted && streak?.lastDate !== new Date().toISOString().slice(0, 10) && (
+                      <span className="text-accent ml-2">· all done — mark today done ↑</span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setReshuffleCount(c => c + 1)}
+                  className="mono text-xs uppercase tracking-widest text-muted hover:text-ink transition-colors"
+                >
+                  Reshuffle ↻
+                </button>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {dailyIdeas.map((idea, idx) => (
-            <IdeaCard key={`${idea.angle}-${idx}`} idea={idea} index={idx} onSave={handleSave} />
-          ))}
-        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {dailyIdeas.map((idea, idx) => (
+                  <IdeaCard
+                    key={`${idea.angle}-${idx}`}
+                    idea={idea}
+                    index={idx}
+                    onSave={handleSave}
+                    done={donePosts.includes(idea.angle)}
+                    onTogglePosted={() => handleTogglePosted(idea)}
+                  />
+                ))}
+              </div>
+            </>
+          );
+        })()}
 
         {/* Footer / methodology */}
         <div className="mt-16 hairline-t pt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
@@ -174,14 +204,29 @@ function Stat({ label, value, sub, accent }: { label: string; value: string; sub
   );
 }
 
-function IdeaCard({ idea, index, onSave }: { idea: PostIdea; index: number; onSave: (i: PostIdea) => void }) {
+function IdeaCard({
+  idea,
+  index,
+  onSave,
+  done,
+  onTogglePosted,
+}: {
+  idea: PostIdea;
+  index: number;
+  onSave: (i: PostIdea) => void;
+  done: boolean;
+  onTogglePosted: () => void;
+}) {
   return (
     <article
-      className="card card-elevated p-6 fade-up"
+      className={`card card-elevated p-6 fade-up transition-opacity ${done ? 'opacity-60' : ''}`}
       style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'both' }}
     >
       <div className="flex items-center justify-between mb-4">
-        <span className="tag tag-accent">{CATEGORY_LABELS[idea.category]}</span>
+        <div className="flex items-center gap-2">
+          <span className="tag tag-accent">{CATEGORY_LABELS[idea.category]}</span>
+          {done && <span className="mono text-[10px] uppercase tracking-widest text-accent">· posted</span>}
+        </div>
         <span className="mono text-[10px] uppercase tracking-widest text-muted">No. {String(index + 1).padStart(2, '0')}</span>
       </div>
 
@@ -224,9 +269,17 @@ function IdeaCard({ idea, index, onSave }: { idea: PostIdea; index: number; onSa
         </div>
       </div>
 
-      <button onClick={() => onSave(idea)} className="btn btn-ghost text-[10px] mt-2">
-        Save for later
-      </button>
+      <div className="flex items-center gap-2 mt-2">
+        <button
+          onClick={onTogglePosted}
+          className={`btn text-[10px] ${done ? 'bg-ink text-paper border-ink' : ''}`}
+        >
+          {done ? 'Posted ✓ · undo' : 'Mark posted'}
+        </button>
+        <button onClick={() => onSave(idea)} className="btn btn-ghost text-[10px]">
+          Save for later
+        </button>
+      </div>
     </article>
   );
 }

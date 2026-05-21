@@ -34,20 +34,22 @@ const SIGNALS: Signal[] = [
   { name: 'shipping', patterns: [/\b(ship|shipped|launch|launched|pushed|deployed|live|released)\b/i], categories: ['build-log', 'metric'] },
   { name: 'bug', patterns: [/\b(bug|broke|broken|crash|error|fix|fixed|debug|debugging)\b/i], categories: ['build-log', 'lesson'] },
   { name: 'metric', patterns: [/\b(\d+\s*(users?|signups?|installs?|mrr|revenue|dau|mau|downloads?|views?))|users? jumped|crossed \d/i], categories: ['metric', 'build-log'] },
-  { name: 'claude-tool', patterns: [/\b(claude|cursor|copilot|chatgpt|gpt|cline|aider|mcp|sub.?agent|prompt)\b/i], categories: ['ai-workflow', 'lesson'] },
-  { name: 'lesson', patterns: [/\b(learn|learned|lesson|realized|figured out|wish i knew|looking back|in hindsight)\b/i], categories: ['lesson', 'observation'] },
-  { name: 'mistake', patterns: [/\b(mistake|wrong|mess(ed)? up|screw(ed)? up|regret|should(n.t)? have)\b/i], categories: ['lesson', 'build-log'] },
-  { name: 'opinion', patterns: [/\b(think|believe|opinion|hot take|imo|imho|disagree|wrong|overrated|underrated)\b/i], categories: ['hot-take', 'observation'] },
-  { name: 'question', patterns: [/\?$|\b(how do you|what do you|anyone else|am i the only)\b/i], categories: ['question'] },
-  { name: 'surprise', patterns: [/\b(surprised|surprising|didn.t expect|unexpected|weird|strange|counter.?intuitive)\b/i], categories: ['observation', 'metric'] },
-  { name: 'comparison', patterns: [/\b(vs|versus|compared|better than|worse than|switched from|replaced)\b/i], categories: ['ai-workflow', 'hot-take'] },
-  { name: 'workflow', patterns: [/\b(workflow|setup|stack|process|use(d)?|tool|toolkit)\b/i], categories: ['ai-workflow', 'behind-scenes'] },
-  { name: 'time', patterns: [/\b(\d+\s*(hours?|days?|weeks?|months?|minutes?))|in (a day|an hour|minutes)\b/i], categories: ['build-log', 'metric'] },
+  { name: 'claude-tool', patterns: [/\b(claude|cursor|copilot|chatgpt|gpt|cline|aider|mcp|sub.?agent|prompt|ai|llm|agent|model)\b/i], categories: ['ai-workflow', 'lesson'] },
+  { name: 'lesson', patterns: [/\b(learn|learned|lesson|realized|figured out|wish i knew|looking back|in hindsight|takeaway)\b/i], categories: ['lesson', 'observation'] },
+  { name: 'mistake', patterns: [/\b(mistake|wrong|mess(ed)? up|screw(ed)? up|regret|should(n.t)? have|cost me|burned)\b/i], categories: ['lesson', 'build-log'] },
+  { name: 'opinion', patterns: [/\b(think|believe|opinion|hot take|imo|imho|disagree|wrong|overrated|underrated|prediction|nobody talks)\b/i], categories: ['hot-take', 'observation'] },
+  { name: 'question', patterns: [/\?$|\b(how do you|what do you|anyone else|am i the only|should i|a or b|or should|picking between|stuck between|trying to decide)\b/i], categories: ['question', 'hot-take'] },
+  { name: 'surprise', patterns: [/\b(surprised|surprising|didn.t expect|unexpected|weird|strange|counter.?intuitive|huh)\b/i], categories: ['observation', 'metric'] },
+  { name: 'comparison', patterns: [/\b(vs|versus|compared|better than|worse than|switched from|replaced|moved from)\b/i], categories: ['ai-workflow', 'hot-take'] },
+  { name: 'workflow', patterns: [/\b(workflow|setup|stack|process|use(d)?|tool|toolkit|pipeline|claude\.?md)\b/i], categories: ['ai-workflow', 'behind-scenes'] },
+  { name: 'time', patterns: [/\b(\d+\s*(hours?|days?|weeks?|months?|minutes?))|in (a day|an hour|minutes)|\b(today|yesterday|tonight|this morning|this week|last week|this month)\b/i], categories: ['build-log', 'metric'] },
   { name: 'product-stashbox', patterns: [/\bstashbox\b/i], categories: ['build-log', 'metric', 'behind-scenes'] },
   { name: 'product-hotlist', patterns: [/\bhotlist(jobs)?\b/i], categories: ['build-log', 'metric', 'behind-scenes'] },
-  { name: 'feeling', patterns: [/\b(feel|feeling|tired|exhausted|excited|frustrated|happy|stuck)\b/i], categories: ['observation', 'lesson'] },
-  { name: 'feature', patterns: [/\b(feature|added|building|working on|building out)\b/i], categories: ['build-log', 'behind-scenes'] },
-  { name: 'user-feedback', patterns: [/\b(user|customer|feedback|told me|said|complained|loved|hated|asked for)\b/i], categories: ['lesson', 'metric'] },
+  { name: 'feeling', patterns: [/\b(feel|feeling|tired|exhausted|excited|frustrated|happy|stuck|noticing|noticed|wondering|curious)\b/i], categories: ['observation', 'lesson'] },
+  { name: 'feature', patterns: [/\b(feature|added|building|working on|building out|implementing|prototyping)\b/i], categories: ['build-log', 'behind-scenes'] },
+  { name: 'user-feedback', patterns: [/\b(user|customer|feedback|told me|said|complained|loved|hated|asked for|requested)\b/i], categories: ['lesson', 'metric'] },
+  { name: 'money', patterns: [/\$\s?\d|\b\d+\s*(dollars?|bucks|mrr|arr|revenue|month|monthly)\b|\bbill\b|\bcost\b/i], categories: ['behind-scenes', 'metric'] },
+  { name: 'platform', patterns: [/\b(play store|app store|android|ios|google play|apk|aab|asml?|review|reviewer)\b/i], categories: ['build-log', 'behind-scenes'] },
 ];
 
 // Angle generators — for each detected category, here are the angle templates.
@@ -333,6 +335,127 @@ const ANGLE_TEMPLATES: AngleTemplate[] = [
       'Always include the image. Text-only BTS posts underperform.',
     ],
   },
+  {
+    category: 'hot-take',
+    name: 'Trend Prediction',
+    whyThisAngle: 'Your read on where AI tooling is going. Specific timeframes get more replies than vague predictions.',
+    hookStructures: [
+      'In-N-months ("In 6 months, [specific prediction about tool/trend]")',
+      'Nobody-talks ("Nobody talks about [trend]. They will in [timeframe].")',
+      'Already-here ("[Trend] is already here. People just call it [old name].")',
+    ],
+    examples: [
+      'In 6 months, sub-agents will be the default mental model. The "one giant system prompt" era is ending.',
+      'Nobody talks about how much CLAUDE.md actually shapes output. The good prompts live in those files.',
+      'AI coding is already commoditized. The moat is taste and judgment about what to ship.',
+    ],
+    sharperQuestions: [
+      'What specific tool/pattern triggers this prediction?',
+      'What would prove you wrong?',
+      'Who already does this and is ahead of the curve?',
+    ],
+    keywords: ['prediction', 'in 6 months', 'trend', 'future', 'nobody talks'],
+    watchOuts: [
+      'Pick a date. "Soon" doesn\'t count.',
+      'Acknowledge what you might get wrong.',
+    ],
+  },
+  {
+    category: 'observation',
+    name: 'Quiet Pattern',
+    whyThisAngle: 'Specific patterns you\'ve noticed in your own work, without making a big claim about them.',
+    hookStructures: [
+      'Noticed-that ("Noticed [specific pattern] in my [product/work]")',
+      'Same-thing ("Same thing keeps happening: [pattern]")',
+      'Quiet-rule ("Quiet rule of [domain]: [observation]")',
+    ],
+    examples: [
+      'Noticed that every Hotlistjobs feature I ship without a mobile-friendly equivalent gets used less. Candidates want parity across devices.',
+      'Same thing keeps happening on StashBox: users open it, save 2-3 items, forget about it for a week, come back. The habit cycle is weekly, not daily.',
+      'Quiet rule of indie Android: a 5MB binary feels professional. A 50MB one feels lazy. Nobody says it out loud.',
+    ],
+    sharperQuestions: [
+      'Is this a pattern in your product or in the world?',
+      'What would falsify this observation?',
+      'How did you first notice it?',
+    ],
+    keywords: ['noticed', 'pattern', 'keeps happening', 'quiet rule'],
+    watchOuts: [
+      'Stay specific. "I\'ve noticed X" beats "users tend to Y".',
+    ],
+  },
+  {
+    category: 'lesson',
+    name: 'Anti-Pattern',
+    whyThisAngle: 'What NOT to do, framed from your own mistake. Stronger than "do X" advice because it has a scar.',
+    hookStructures: [
+      'Stop-doing ("Stop [common thing]. Here\'s what I do instead:")',
+      'Cost-me ("This habit cost me [time/users/money]:")',
+      'I-used-to ("I used to [X]. Then [bad thing] happened. Now I [Y].")',
+    ],
+    examples: [
+      'Stop accepting Claude\'s first variable names. I had "usrPrf" and "userProfile" coexisting in StashBox for a week.',
+      'I used to ship Hotlistjobs features without checking on mobile. Cost me a chunk of mobile retention before I caught it.',
+      'Stop letting AI write your error messages. Mine all started sounding identical and users stopped reading them.',
+    ],
+    sharperQuestions: [
+      'What was the specific incident that taught you this?',
+      'How much did it cost in time / users / money?',
+      'What do you do now instead?',
+    ],
+    keywords: ['stop doing', 'used to', 'don\'t do', 'cost me'],
+    watchOuts: [
+      'Anchor the lesson to a real event you can describe in one sentence.',
+    ],
+  },
+  {
+    category: 'behind-scenes',
+    name: 'Cost Reveal',
+    whyThisAngle: 'Money breakdowns get saved. People want to know what running an indie product actually costs.',
+    hookStructures: [
+      'Monthly-cost ("$X/month to run [product]. Here\'s the line item:")',
+      'Cost-per-user ("Costs me $X per active user. Sustainable until [N] users.")',
+      'Bill-shock ("Got the [Vercel/Firebase/etc] bill today. [N] dollars.")',
+    ],
+    examples: [
+      '$23/month to run Hotlistjobs at 200 signups. Vercel free, Neon free, Resend $20, domain $3.',
+      'StashBox: $0/month to run. Firebase free tier, Play Store $25 one-time. The unfair advantage of mobile.',
+      'Got the Resend bill today. Saved-search alerts pushed me past free tier. Worth it. Open rates went up too.',
+    ],
+    sharperQuestions: [
+      'What line item would surprise people?',
+      'What did you almost get charged for that you avoided?',
+      'What\'s the cost per active user?',
+    ],
+    keywords: ['cost', 'monthly', 'bill', '$', 'per user'],
+    watchOuts: [
+      'Include the small line items. The $3 domain matters as much as the $20 saas.',
+    ],
+  },
+  {
+    category: 'question',
+    name: 'Decision Help',
+    whyThisAngle: 'Sharing the actual fork in the road and asking the timeline gets builders to weigh in fast.',
+    hookStructures: [
+      'A-or-B ("A or B for [specific decision]? Tradeoffs are [X] vs [Y].")',
+      'Stuck-between ("Stuck between [option A] and [option B] for [thing]. Where do you land?")',
+      'Picking-now ("Picking [thing] this week. Want to hear what burned you.")',
+    ],
+    examples: [
+      'Picking between Room and SQLDelight for the next StashBox feature. Room\'s easier, SQLDelight scales better. Which would you regret less?',
+      'Hotlistjobs: should saved searches be local-first or server-first? Going local-first feels right, server-first matches user expectations.',
+      'A or B: ship the Android widget this week (90% done) or fix the Play Store listing first (revenue lever)?',
+    ],
+    sharperQuestions: [
+      'What are the 2 options, in one sentence each?',
+      'What does your gut say, and what makes you doubt it?',
+      'What would change once you decide?',
+    ],
+    keywords: ['A or B', 'stuck between', 'picking', 'tradeoff'],
+    watchOuts: [
+      'Name the actual options. "Which framework?" gets nothing. "Room vs SQLDelight" gets answers.',
+    ],
+  },
 ];
 
 const GENERAL_TIPS_POOL = [
@@ -353,6 +476,41 @@ const REPLY_TIPS_POOL = [
   'A question is a stronger reply than agreement.',
   'Replies under 200 chars get read. Over 280, skimmed.',
   'Quote-tweet only if you have a real addition. Otherwise reply.',
+];
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function sortExamplesByInput(examples: string[], input: string): string[] {
+  const tokens = input.toLowerCase().split(/\W+/).filter(t => t.length > 3);
+  const mentionsStashbox = /\bstashbox\b/i.test(input);
+  const mentionsHotlist = /\bhotlist/i.test(input);
+
+  return [...examples]
+    .map((ex, originalIdx) => {
+      const exLower = ex.toLowerCase();
+      let score = 0;
+      for (const tok of tokens) if (exLower.includes(tok)) score++;
+      if (mentionsStashbox && /stashbox/i.test(ex)) score += 5;
+      if (mentionsHotlist && /hotlist/i.test(ex)) score += 5;
+      // Demote opposite-product examples when user named one
+      if (mentionsStashbox && !mentionsHotlist && /hotlist/i.test(ex) && !/stashbox/i.test(ex)) score -= 3;
+      if (mentionsHotlist && !mentionsStashbox && /stashbox/i.test(ex) && !/hotlist/i.test(ex)) score -= 3;
+      return { ex, score, originalIdx };
+    })
+    .sort((a, b) => b.score - a.score || a.originalIdx - b.originalIdx)
+    .map(({ ex }) => ex);
+}
+
+const FALLBACK_SETS: string[][] = [
+  ['build-log', 'observation', 'lesson'],
+  ['ai-workflow', 'hot-take', 'lesson'],
+  ['behind-scenes', 'observation', 'question'],
+  ['metric', 'lesson', 'hot-take'],
+  ['ai-workflow', 'behind-scenes', 'observation'],
 ];
 
 export function refineIdea(rawInput: string, mode: IdeaMode): RefinerResult {
@@ -381,8 +539,8 @@ export function refineIdea(rawInput: string, mode: IdeaMode): RefinerResult {
     .map(([c]) => c);
 
   if (topCategories.length === 0) {
-    // Default fallback — give them a mix
-    topCategories = ['build-log', 'observation', 'lesson'];
+    // Default fallback rotates based on input so vague inputs still vary
+    topCategories = FALLBACK_SETS[hashStr(text) % FALLBACK_SETS.length];
   } else if (topCategories.length < 3) {
     // Pad with a complementary category
     const padOptions = ['observation', 'lesson', 'hot-take', 'behind-scenes'].filter(c => !topCategories.includes(c));
@@ -399,13 +557,17 @@ export function refineIdea(rawInput: string, mode: IdeaMode): RefinerResult {
     const candidates = ANGLE_TEMPLATES.filter(t => t.category === cat && !usedTemplates.has(t.name));
     if (candidates.length === 0) continue;
 
-    // Prefer templates whose keywords overlap with detected signals
+    // Prefer templates whose keywords overlap with detected signals.
+    // Tie-break with input hash so two ambiguous inputs land on different templates.
+    const inputHash = hashStr(text);
     const ranked = candidates
-      .map(t => {
+      .map((t, idx) => {
         const overlap = t.keywords.filter(k => text.toLowerCase().includes(k.toLowerCase())).length;
-        return { t, overlap };
+        // Hash-based tie-break in [0, 0.99]
+        const tieBreak = ((inputHash + idx * 17) % 100) / 100;
+        return { t, overlap, tieBreak };
       })
-      .sort((a, b) => b.overlap - a.overlap);
+      .sort((a, b) => b.overlap - a.overlap || b.tieBreak - a.tieBreak);
 
     const chosen = ranked[0].t;
     usedTemplates.add(chosen.name);
@@ -414,7 +576,7 @@ export function refineIdea(rawInput: string, mode: IdeaMode): RefinerResult {
       category: chosen.category,
       whyThisAngle: chosen.whyThisAngle,
       hookStructures: chosen.hookStructures,
-      examples: chosen.examples,
+      examples: sortExamplesByInput(chosen.examples, text),
       sharperQuestions: chosen.sharperQuestions,
       keywords: chosen.keywords,
       watchOuts: chosen.watchOuts,

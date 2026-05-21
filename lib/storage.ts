@@ -6,6 +6,7 @@ const KEYS = {
   lastSeed: 'xge:lastSeed',
   settings: 'xge:settings',
   threadLog: 'xge:threads',
+  donePosts: 'xge:donePosts',
 };
 
 export interface StreakData {
@@ -121,6 +122,35 @@ export const storage = {
       list.unshift(today);
       localStorage.setItem(KEYS.threadLog, JSON.stringify(list.slice(0, 52)));
     }
+  },
+
+  // Per-day post completion. Stores { 'YYYY-MM-DD': [angle1, angle2, ...] }
+  getDonePostsMap(): Record<string, string[]> {
+    if (!isBrowser()) return {};
+    const raw = localStorage.getItem(KEYS.donePosts);
+    if (!raw) return {};
+    try { return JSON.parse(raw); } catch { return {}; }
+  },
+
+  getDonePostsForToday(): string[] {
+    const map = storage.getDonePostsMap();
+    return map[todayStr()] ?? [];
+  },
+
+  togglePostDone(key: string): string[] {
+    const map = storage.getDonePostsMap();
+    const today = todayStr();
+    const cur = map[today] ?? [];
+    const next = cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key];
+
+    // Prune entries older than 7 days
+    const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const pruned: Record<string, string[]> = { [today]: next };
+    for (const [d, keys] of Object.entries(map)) {
+      if (d >= cutoff && d !== today && keys.length > 0) pruned[d] = keys;
+    }
+    localStorage.setItem(KEYS.donePosts, JSON.stringify(pruned));
+    return next;
   },
 };
 
