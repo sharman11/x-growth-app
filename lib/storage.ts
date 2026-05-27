@@ -63,20 +63,34 @@ export const storage = {
   },
 
   markToday(): StreakData {
-    const s = storage.getStreak();
-    const today = todayStr();
-    if (s.lastDate === today) return s;
+    return storage.markDate(todayStr());
+  },
 
-    const yesterday = istYesterdayStr();
-    const newCurrent = s.lastDate === yesterday ? s.current + 1 : 1;
+  markDate(date: string): StreakData {
+    const s = storage.getStreak();
+    if (s.lastDate === date) return s;
+
+    const prev = new Date(new Date(date).getTime() - 86400000).toISOString().slice(0, 10);
+    const newCurrent = s.lastDate === prev ? s.current + 1 : 1;
     const next: StreakData = {
       current: newCurrent,
       best: Math.max(s.best, newCurrent),
-      lastDate: today,
+      lastDate: date,
       totalDays: s.totalDays + 1,
     };
     localStorage.setItem(KEYS.streak, JSON.stringify(next));
     return next;
+  },
+
+  // Auto-mark yesterday as done if at least one prompt was posted that day.
+  // Idempotent: skips if streak already accounts for yesterday or no posts were marked.
+  autoMarkYesterdayIfPosted(): StreakData | null {
+    const yesterday = istYesterdayStr();
+    const s = storage.getStreak();
+    if (s.lastDate === yesterday || s.lastDate === todayStr()) return null;
+    const posted = storage.getDonePostsMap()[yesterday] ?? [];
+    if (posted.length === 0) return null;
+    return storage.markDate(yesterday);
   },
 
   getSaved(): SavedIdea[] {

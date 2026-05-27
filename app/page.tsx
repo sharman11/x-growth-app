@@ -27,19 +27,22 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
+    // If the user posted yesterday but never hit "mark done", carry the streak forward now.
+    storage.autoMarkYesterdayIfPosted();
     setStreak(storage.getStreak());
     setSettings(storage.getSettings());
     setDonePosts(storage.getDonePostsForToday());
   }, []);
 
   // Reset the page state at IST midnight: prompts re-seed (via dayKey in useMemo),
-  // donePosts clear, and the "Mark today done" button becomes available again.
+  // donePosts clear, and — if any prompt was marked posted — the day auto-counts toward the streak.
   useEffect(() => {
     const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
     const scheduleNext = () => {
       const nowIst = Date.now() + IST_OFFSET_MS;
       const msUntilMidnight = 86400000 - (nowIst % 86400000);
       return window.setTimeout(() => {
+        storage.autoMarkYesterdayIfPosted();
         setDayKey(istTodayStr());
         setDonePosts(storage.getDonePostsForToday());
         setStreak(storage.getStreak());
